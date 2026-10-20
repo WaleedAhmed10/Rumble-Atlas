@@ -15,12 +15,15 @@ export default function Results() {
 
   function shareResults() {
     if (!results) return;
-    const text = `🏆 Royal Rumble 2026 Winner: ${results.winner}! ${results.mostEliminations} eliminations! Can you beat my prediction? 🎪`;
+    const text = `🏆 Royal Rumble Winner: ${results.winner}! ${results.mostEliminations} eliminations! Can you beat my prediction? 🎪`;
     if (navigator.share) {
-      navigator.share({ title: 'Royal Rumble Results', text, url: window.location.href });
+      navigator.share({ title: 'Royal Rumble Results', text, url: window.location.href }).catch(() => {});
+    } else if (navigator.clipboard) {
+      navigator.clipboard.writeText(text)
+        .then(() => alert('Results copied to clipboard! Share with your friends!'))
+        .catch(() => alert(text));
     } else {
-      navigator.clipboard.writeText(text);
-      alert('Results copied to clipboard! Share with your friends!');
+      alert(text);
     }
   }
 
@@ -45,7 +48,7 @@ export default function Results() {
   return (
     <>
       <div className="winner-banner">
-        <h2>🏆 ROYAL RUMBLE 2026 WINNER 🏆</h2>
+        <h2>🏆 ROYAL RUMBLE WINNER 🏆</h2>
         <div className="winner-name">{results.winner}</div>
         <p>Match Duration: {Math.floor(results.matchDuration)} minutes</p>
       </div>
@@ -59,11 +62,11 @@ export default function Results() {
         <div className="stat-card">
           <h3>⏳ Iron Man</h3>
           <div className="stat-number">{results.ironMan}</div>
-          <p>Longest time in ring</p>
+          <p>Longest time in ring{results.ironManMinutes ? ` (${results.ironManMinutes} min)` : ''}</p>
         </div>
         <div className="stat-card">
           <h3>📊 Total Eliminations</h3>
-          <div className="stat-number">{results.totalEliminations || 29}</div>
+          <div className="stat-number">{results.totalEliminations ?? 29}</div>
           <p>out of 29</p>
         </div>
       </div>

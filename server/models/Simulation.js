@@ -6,6 +6,7 @@ const simulationSchema = new mongoose.Schema({
   mostEliminations: Number,
   mostEliminationsName: String,
   ironMan: String,
+  ironManMinutes: Number,
   totalEliminations: Number,
   timeline: [{ minute: Number, text: String }],
   createdAt: { type: Date, default: Date.now }

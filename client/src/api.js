@@ -43,6 +43,7 @@ export const getSampleRumble = () => request('/setup/sample');
 // Simulations
 export const getSimulations = () => request('/simulations');
 export const getLatestSimulation = () => request('/simulations/latest');
+export const runSimulation = () => request('/simulations/run', { method: 'POST', body: JSON.stringify({}) });
 export const saveSimulation = (data) => request('/simulations', { method: 'POST', body: JSON.stringify(data) });
 
 // AI Predictions

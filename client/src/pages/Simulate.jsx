@@ -1,23 +1,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSetup, saveSimulation } from '../api';
+import { getSetup, runSimulation } from '../api';
 
+// The match itself is computed on the server (same engine as the Monte Carlo predictor).
+// This page replays the per-minute frames so you can watch it unfold.
 export default function Simulate() {
   const navigate = useNavigate();
   const [setup, setSetup] = useState(null);
   const [error, setError] = useState('');
   const [isRunning, setIsRunning] = useState(false);
+  const [starting, setStarting] = useState(false);
   const [speed, setSpeed] = useState(1);
   const [minute, setMinute] = useState(0);
-  const [active, setActive] = useState([]);
-  const [eliminated, setEliminated] = useState([]);
+  const [inRing, setInRing] = useState(0);
+  const [eliminatedCount, setEliminatedCount] = useState(0);
   const [timeline, setTimeline] = useState([{ minute: 0, text: 'Royal Rumble begins!' }]);
   const [winner, setWinner] = useState(null);
   const [complete, setComplete] = useState(false);
 
-  const entryQueue = useRef([]);
+  const framesRef = useRef([]);
+  const indexRef = useRef(0);
+  const resultRef = useRef(null);
   const intervalRef = useRef(null);
-  const matchRef = useRef({ active: [], eliminated: [], minute: 0, timeline: [] });
+  const timelineRef = useRef(null);
 
   useEffect(() => {
     getSetup()
@@ -26,116 +31,79 @@ export default function Simulate() {
           setError('No rumble setup found! Please build a Royal Rumble first.');
         } else {
           setSetup(data);
-          entryQueue.current = [...data.wrestlers].sort((a, b) => a.entryNumber - b.entryNumber);
         }
       })
       .catch(err => setError(err.message));
     return () => clearInterval(intervalRef.current);
   }, []);
 
-  function addEvent(text, currentMinute) {
-    setTimeline(prev => [...prev, { minute: currentMinute, text }]);
-    matchRef.current.timeline.push({ minute: currentMinute, text });
-  }
+  // keep the newest event in view
+  useEffect(() => {
+    const el = timelineRef.current;
+    if (el) el.scrollTop = el.scrollHeight;
+  }, [timeline]);
 
-  function simulateStep() {
-    const m = matchRef.current;
-    m.minute += 1;
-    setMinute(m.minute);
-
-    const entryIndex = Math.floor(m.minute / 1.5);
-    while (entryQueue.current.length > 0 && entryQueue.current[0].entryNumber === entryIndex) {
-      const w = entryQueue.current.shift();
-      m.active.push({ ...w, stamina: 100, momentum: 0, eliminations: 0 });
-      addEvent(`${w.name} enters at #${w.entryNumber}!`, m.minute);
+  function playFrame() {
+    const frame = framesRef.current[indexRef.current];
+    if (!frame) return;
+    indexRef.current += 1;
+    setMinute(frame.minute);
+    setInRing(frame.inRing);
+    setEliminatedCount(frame.eliminated);
+    if (frame.events.length > 0) {
+      setTimeline(prev => [...prev, ...frame.events.map(e => ({ minute: e.minute, text: e.text }))]);
     }
-
-    const toRemove = [];
-    m.active.forEach(w => {
-      w.stamina -= 1 + m.active.length / 10;
-      w.momentum *= 0.95;
-      let elimChance = 0.05;
-      elimChance *= (1 + (100 - w.stamina) / 200);
-      elimChance /= w.eliminationResistance || 1;
-      elimChance /= 1 + w.momentum;
-      if (Math.random() < elimChance) toRemove.push(w);
-    });
-
-    toRemove.forEach(w => {
-      const idx = m.active.indexOf(w);
-      if (idx !== -1) m.active.splice(idx, 1);
-      m.eliminated.push(w);
-      if (m.active.length > 0) {
-        const eliminator = m.active[Math.floor(Math.random() * m.active.length)];
-        eliminator.eliminations++;
-        eliminator.momentum += 0.25;
-        addEvent(`❌ ${w.name} eliminated by ${eliminator.name}!`, m.minute);
-      } else {
-        addEvent(`❌ ${w.name} eliminated!`, m.minute);
-      }
-    });
-
-    setActive([...m.active]);
-    setEliminated([...m.eliminated]);
-
-    const done = m.eliminated.length >= 29 || (entryQueue.current.length === 0 && m.active.length === 1);
-    if (done && m.active.length >= 1) endMatch(m);
+    if (indexRef.current >= framesRef.current.length) {
+      clearInterval(intervalRef.current);
+      setIsRunning(false);
+      setWinner({ name: resultRef.current.winner });
+      setComplete(true);
+    }
   }
 
-  async function endMatch(m) {
+  function runLoop(s = speed) {
     clearInterval(intervalRef.current);
-    setIsRunning(false);
-    const win = m.active[0];
-    setWinner(win);
-    setComplete(true);
-    addEvent(`🏆 WINNER: ${win.name}! 🏆`, m.minute);
-
-    const all = [...m.active, ...m.eliminated];
-    const mostElim = all.reduce((a, b) => (a.eliminations || 0) > (b.eliminations || 0) ? a : b, { name: 'Unknown', eliminations: 0 });
-
-    try {
-      await saveSimulation({
-        winner: win.name,
-        matchDuration: m.minute,
-        mostEliminations: mostElim.eliminations || 0,
-        mostEliminationsName: mostElim.name,
-        ironMan: win.name,
-        totalEliminations: m.eliminated.length,
-        timeline: m.timeline
-      });
-    } catch (err) {
-      console.error('Could not save to server:', err.message);
-    }
+    intervalRef.current = setInterval(playFrame, 1000 / s);
   }
 
-  function start() {
-    if (!setup || isRunning) return;
-    setIsRunning(true);
-    runLoop();
+  async function start() {
+    if (!setup || isRunning || starting) return;
+    setStarting(true);
+    setError('');
+    try {
+      const { simulation, frames } = await runSimulation();
+      framesRef.current = frames;
+      resultRef.current = simulation;
+      indexRef.current = 0;
+      setMinute(0);
+      setInRing(0);
+      setEliminatedCount(0);
+      setWinner(null);
+      setComplete(false);
+      setTimeline([{ minute: 0, text: 'Royal Rumble begins!' }]);
+      setIsRunning(true);
+      runLoop();
+    } catch (err) {
+      setError(err.message);
+    } finally {
+      setStarting(false);
+    }
   }
 
   function togglePause() {
     if (isRunning) {
       clearInterval(intervalRef.current);
       setIsRunning(false);
-    } else {
+    } else if (framesRef.current.length > 0 && !complete) {
       setIsRunning(true);
       runLoop();
     }
   }
 
-  function runLoop() {
-    clearInterval(intervalRef.current);
-    intervalRef.current = setInterval(simulateStep, 1000 / speed);
-  }
-
   function toggleSpeed() {
     const newSpeed = speed === 1 ? 3 : 1;
     setSpeed(newSpeed);
-    if (isRunning) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = setInterval(simulateStep, 1000 / newSpeed);
-    }
+    if (isRunning) runLoop(newSpeed);
   }
 
   function formatTime(m) {
@@ -144,7 +112,7 @@ export default function Simulate() {
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   }
 
-  if (error) {
+  if (error && !setup) {
     return (
       <div className="error-msg">
         <p>{error}</p>
@@ -155,13 +123,18 @@ export default function Simulate() {
 
   if (!setup) return <p style={{ textAlign: 'center' }}>Loading setup...</p>;
 
+  const started = framesRef.current.length > 0;
+
   return (
     <>
       <h1 className="page-title">Royal Rumble Simulation</h1>
+      {error && <div className="error-msg">{error}</div>}
 
       <div className="controls">
-        <button className="btn" onClick={start} disabled={isRunning || complete}>▶️ Start Simulation</button>
-        <button className="btn" onClick={togglePause} disabled={!minute && !isRunning}>
+        <button className="btn" onClick={start} disabled={isRunning || starting}>
+          {starting ? 'Starting...' : complete ? '🔄 Run Again' : '▶️ Start Simulation'}
+        </button>
+        <button className="btn" onClick={togglePause} disabled={!started || complete}>
           {isRunning ? '⏸️ Pause' : '▶️ Resume'}
         </button>
         <button className="btn" onClick={toggleSpeed}>⚡ Speed: {speed}x</button>
@@ -175,16 +148,16 @@ export default function Simulate() {
         </div>
         <div className="stat-card">
           <h3>👥 In Ring</h3>
-          <p>{active.length}</p>
+          <p>{inRing}</p>
         </div>
         <div className="stat-card">
           <h3>❌ Eliminated</h3>
-          <p>{eliminated.length}/29</p>
+          <p>{eliminatedCount}/29</p>
         </div>
       </div>
 
       <div className="progress-bar">
-        <div className="progress-fill" style={{ width: `${(eliminated.length / 29) * 100}%` }} />
+        <div className="progress-fill" style={{ width: `${(eliminatedCount / 29) * 100}%` }} />
       </div>
 
       {winner && (
@@ -195,7 +168,7 @@ export default function Simulate() {
         </div>
       )}
 
-      <div className="timeline">
+      <div className="timeline" ref={timelineRef}>
         <h3>Elimination Timeline</h3>
         {timeline.map((e, i) => (
           <div key={i} className="timeline-event">

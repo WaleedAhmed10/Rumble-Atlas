@@ -17,8 +17,8 @@ module.exports = {
   wrestlers: {
     getAll: () => Wrestler.find().sort({ name: 1 }),
     add: (data) => new Wrestler(data).save(),
-    update: (id, data) => Wrestler.findByIdAndUpdate(id, data, { new: true }),
-    remove: (id) => Wrestler.findByIdAndDelete(id),
+    update: (id, data) => Wrestler.findByIdAndUpdate(id, data, { new: true, runValidators: true }),
+    remove: async (id) => Boolean(await Wrestler.findByIdAndDelete(id)),
     reset: async () => {
       await Wrestler.deleteMany({});
       return Wrestler.insertMany(DEFAULT_WRESTLERS);

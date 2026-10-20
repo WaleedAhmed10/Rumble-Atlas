@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const store = require('../store');
 const { sanitizeWrestlers } = require('../utils/sanitizeWrestlers');
+const { cleanWrestler } = require('../utils/validate');
 
 router.get('/', async (req, res) => {
   try {
@@ -13,7 +14,9 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const wrestler = await store.wrestlers.add(req.body);
+    const data = cleanWrestler(req.body);
+    if (!data) return res.status(400).json({ error: 'A wrestler needs a name' });
+    const wrestler = await store.wrestlers.add(data);
     res.status(201).json(wrestler);
   } catch (err) {
     res.status(400).json({ error: err.message });
@@ -22,7 +25,9 @@ router.post('/', async (req, res) => {
 
 router.put('/:id', async (req, res) => {
   try {
-    const wrestler = await store.wrestlers.update(req.params.id, req.body);
+    const data = cleanWrestler(req.body);
+    if (!data) return res.status(400).json({ error: 'A wrestler needs a name' });
+    const wrestler = await store.wrestlers.update(req.params.id, data);
     if (!wrestler) return res.status(404).json({ error: 'Wrestler not found' });
     res.json(wrestler);
   } catch (err) {
@@ -32,7 +37,8 @@ router.put('/:id', async (req, res) => {
 
 router.delete('/:id', async (req, res) => {
   try {
-    await store.wrestlers.remove(req.params.id);
+    const removed = await store.wrestlers.remove(req.params.id);
+    if (removed === false || removed === null) return res.status(404).json({ error: 'Wrestler not found' });
     res.json({ message: 'Deleted' });
   } catch (err) {
     res.status(500).json({ error: err.message });

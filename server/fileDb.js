@@ -12,11 +12,24 @@ function readDB() {
     writeDB(initial);
     return initial;
   }
-  return JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+  try {
+    const db = JSON.parse(fs.readFileSync(DB_FILE, 'utf8'));
+    return { wrestlers: [], setups: [], simulations: [], ...db };
+  } catch (err) {
+    // Corrupt db.json: keep a backup and start fresh instead of crashing every request
+    console.error('db.json is unreadable, resetting it:', err.message);
+    try { fs.renameSync(DB_FILE, `${DB_FILE}.corrupt-${Date.now()}`); } catch { /* ignore */ }
+    const initial = { wrestlers: DEFAULT_WRESTLERS.map((w, i) => ({ ...w, _id: String(i + 1) })), setups: [], simulations: [] };
+    writeDB(initial);
+    return initial;
+  }
 }
 
 function writeDB(data) {
-  fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2));
+  // write to a temp file then rename so a crash mid-write can't corrupt the database
+  const tmp = `${DB_FILE}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(data, null, 2));
+  fs.renameSync(tmp, DB_FILE);
 }
 
 function newId() {
@@ -25,12 +38,12 @@ function newId() {
 
 // --- Wrestlers ---
 function getWrestlers() {
-  return readDB().wrestlers;
+  return readDB().wrestlers.slice().sort((a, b) => a.name.localeCompare(b.name));
 }
 
 function addWrestler(data) {
   const db = readDB();
-  const wrestler = { _id: newId(), ...data };
+  const wrestler = { ...data, _id: newId() };
   db.wrestlers.push(wrestler);
   writeDB(db);
   return wrestler;
@@ -40,15 +53,17 @@ function updateWrestler(id, data) {
   const db = readDB();
   const idx = db.wrestlers.findIndex(w => w._id === id);
   if (idx === -1) return null;
-  db.wrestlers[idx] = { ...db.wrestlers[idx], ...data };
+  db.wrestlers[idx] = { ...db.wrestlers[idx], ...data, _id: db.wrestlers[idx]._id };
   writeDB(db);
   return db.wrestlers[idx];
 }
 
 function deleteWrestler(id) {
   const db = readDB();
+  const before = db.wrestlers.length;
   db.wrestlers = db.wrestlers.filter(w => w._id !== id);
   writeDB(db);
+  return db.wrestlers.length !== before;
 }
 
 function resetWrestlers() {
@@ -75,6 +90,7 @@ function saveSetup(wrestlers) {
   const db = readDB();
   const setup = { _id: newId(), wrestlers, createdAt: new Date().toISOString() };
   db.setups.push(setup);
+  if (db.setups.length > 20) db.setups = db.setups.slice(-20);
   writeDB(db);
   return setup;
 }
@@ -93,6 +109,7 @@ function saveSimulation(data) {
   const db = readDB();
   const sim = { _id: newId(), ...data, createdAt: new Date().toISOString() };
   db.simulations.push(sim);
+  if (db.simulations.length > 50) db.simulations = db.simulations.slice(-50); // keep the file small
   writeDB(db);
   return sim;
 }

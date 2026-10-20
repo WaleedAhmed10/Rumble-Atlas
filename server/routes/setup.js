@@ -3,6 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const router = express.Router();
 const store = require('../store');
+const { validateRumble } = require('../utils/validate');
 
 function parseCsvLine(line) {
   const values = [];
@@ -50,6 +51,8 @@ router.get('/sample', async (req, res) => {
         };
       });
 
+    sample.sort((a, b) => a.entryNumber - b.entryNumber);
+
     const entryNumbers = new Set(sample.map(w => w.entryNumber));
     if (sample.length !== 30 || entryNumbers.size !== 30 || sample.some(w => (
       !w.name || !w.brand || !Number.isInteger(w.entryNumber) ||
@@ -75,10 +78,8 @@ router.get('/', async (req, res) => {
 
 router.post('/', async (req, res) => {
   try {
-    const { wrestlers } = req.body;
-    if (!wrestlers || wrestlers.length !== 30) {
-      return res.status(400).json({ error: 'Need exactly 30 wrestlers' });
-    }
+    const { error, wrestlers } = validateRumble(req.body?.wrestlers);
+    if (error) return res.status(400).json({ error });
     const setup = await store.setup.save(wrestlers);
     res.status(201).json(setup);
   } catch (err) {

@@ -2,6 +2,16 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { getWrestlers, getSetup, saveSetup, getSampleRumble } from '../api';
 
+// Put each saved wrestler in the slot matching its entry number (not its array position)
+function slotsFromLineup(lineup) {
+  const slots = Array(30).fill(null);
+  lineup.forEach(w => {
+    const i = Number(w.entryNumber) - 1;
+    if (i >= 0 && i < 30) slots[i] = w;
+  });
+  return slots;
+}
+
 export default function Builder() {
   const navigate = useNavigate();
   const [allWrestlers, setAllWrestlers] = useState([]);
@@ -19,14 +29,14 @@ export default function Builder() {
       const wrestlers = await getWrestlers();
       setAllWrestlers(wrestlers);
       const setup = await getSetup();
-      if (setup?.wrestlers?.length === 30) setSlots(setup.wrestlers);
+      if (setup?.wrestlers?.length === 30) setSlots(slotsFromLineup(setup.wrestlers));
     } catch (err) {
       setError(err.message);
     }
   }
 
   function assignToSlot(slotIndex, wrestler) {
-    const newSlots = [...slots];
+    const newSlots = slots.map(s => (s && s.name === wrestler.name ? null : s)); // a wrestler can only be in one slot
     newSlots[slotIndex] = {
       wrestlerId: wrestler._id,
       name: wrestler.name,
@@ -44,7 +54,12 @@ export default function Builder() {
       alert(`Need at least 30 wrestlers. You have ${allWrestlers.length}. Add more wrestlers first!`);
       return;
     }
-    const shuffled = [...allWrestlers].sort(() => Math.random() - 0.5).slice(0, 30);
+    const shuffled = [...allWrestlers];
+    for (let i = shuffled.length - 1; i > 0; i--) { // Fisher-Yates (sort(() => Math.random() - 0.5) is biased)
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    shuffled.length = 30;
     setSlots(shuffled.map((w, i) => ({
       wrestlerId: w._id,
       name: w.name,
@@ -67,6 +82,8 @@ export default function Builder() {
       return;
     }
     try {
+      const names = new Set(filled.map(s => s.name.toLowerCase()));
+      if (names.size !== 30) { alert('The same wrestler is in more than one slot.'); return; }
       await saveSetup(filled);
       alert('Rumble setup saved! Click Simulate to run the match.');
     } catch (err) {
@@ -81,7 +98,7 @@ export default function Builder() {
     try {
       const sample = await getSampleRumble();
       await saveSetup(sample);
-      setSlots(sample);
+      setSlots(slotsFromLineup(sample));
       setActiveSlot(null);
       setSampleMessage('Sample Rumble loaded and saved. Open AI Predict to try both prediction models.');
     } catch (err) {

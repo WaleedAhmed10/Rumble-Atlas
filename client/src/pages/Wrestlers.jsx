@@ -53,28 +53,44 @@ export default function Wrestlers() {
 
   async function handleDelete(id) {
     if (!confirm('Delete this wrestler?')) return;
-    await deleteWrestler(id);
-    loadWrestlers();
-    alert('Wrestler deleted!');
+    try {
+      await deleteWrestler(id);
+      loadWrestlers();
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   async function handleReset() {
     if (!confirm('Reset to default roster? This will replace all your wrestlers.')) return;
-    await resetWrestlers();
-    loadWrestlers();
-    alert('Reset to default roster!');
+    try {
+      await resetWrestlers();
+      loadWrestlers();
+      alert('Reset to default roster!');
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   async function clearAll() {
     if (!confirm('Delete ALL wrestlers? This cannot be undone.')) return;
-    await importWrestlers([]);
-    loadWrestlers();
-    alert('All wrestlers deleted!');
+    try {
+      await importWrestlers([]);
+      loadWrestlers();
+      alert('All wrestlers deleted!');
+    } catch (err) {
+      alert(err.message);
+    }
   }
 
   async function handleExport() {
     if (wrestlers.length === 0) return alert('No wrestlers to export!');
-    const data = await exportWrestlers();
+    let data;
+    try {
+      data = await exportWrestlers();
+    } catch (err) {
+      return alert(err.message);
+    }
     const columns = ['name', 'brand', 'winProbability', 'eliminationResistance'];
     const csv = [
       columns.join(','),

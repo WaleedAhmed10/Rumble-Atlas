@@ -5,4 +5,4 @@ export const IMAGES = {
   aiPredictions: `/images/${encodeURIComponent('DM Hunk.jpg')}`,
   runSimulation: `/images/${encodeURIComponent('Reigns and Cody.jpg')}`,
   seeResults: '/images/Randy.png'
-};
+};

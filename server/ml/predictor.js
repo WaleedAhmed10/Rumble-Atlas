@@ -1,5 +1,6 @@
 // Simple AI/ML predictor - uses weighted scoring + Monte Carlo simulation
 // No heavy libraries needed - easy to read and understand
+const { runMatch } = require('./engine');
 
 function getEntryBonus(entryNumber) {
   // Late entries (#25-30) often win the Rumble
@@ -55,17 +56,14 @@ function buildInsight(predictions) {
   return `${top.name} leads with ${top.winPercent}% predicted win chance based on stats and entry position.`;
 }
 
-// Run many quick simulations (Monte Carlo) for more accurate ML prediction
+// Run many full simulations (Monte Carlo) using the same engine as the live simulator
 function monteCarloPredict(wrestlers, runs = 500) {
   const winCounts = {};
-
-  wrestlers.forEach(w => {
-    winCounts[w.name] = 0;
-  });
+  wrestlers.forEach(w => { winCounts[w.name] = 0; });
 
   for (let i = 0; i < runs; i++) {
-    const winner = runQuickSimulation(wrestlers);
-    if (winner) winCounts[winner]++;
+    const match = runMatch(wrestlers);
+    if (match.winner) winCounts[match.winner.name]++;
   }
 
   const results = wrestlers.map(w => ({
@@ -81,63 +79,6 @@ function monteCarloPredict(wrestlers, runs = 500) {
     predictions: results,
     insight: `After ${runs} AI simulations, ${results[0].name} wins most often (${results[0].winPercent}%).`
   };
-}
-
-// Fast simulation for Monte Carlo (no timeline, just find winner)
-function runQuickSimulation(wrestlers) {
-  const sorted = [...wrestlers].sort((a, b) => a.entryNumber - b.entryNumber);
-  let entryQueue = [...sorted];
-  let active = [];
-  let minute = 0;
-
-  while (minute < 120) {
-    minute++;
-
-    const entryIndex = Math.floor(minute / 1.5);
-    while (entryQueue.length > 0 && entryQueue[0].entryNumber === entryIndex) {
-      const w = entryQueue.shift();
-      active.push({
-        ...w,
-        stamina: 100,
-        momentum: 0,
-        eliminations: 0
-      });
-    }
-
-    const toRemove = [];
-    active.forEach(w => {
-      w.stamina -= 1 + active.length / 10;
-      w.momentum *= 0.95;
-
-      let elimChance = 0.05;
-      elimChance *= (1 + (100 - w.stamina) / 200);
-      elimChance /= w.eliminationResistance || 1;
-      elimChance /= 1 + w.momentum;
-
-      if (Math.random() < elimChance) {
-        toRemove.push(w);
-      }
-    });
-
-    toRemove.forEach(w => {
-      const idx = active.indexOf(w);
-      if (idx !== -1) active.splice(idx, 1);
-      if (active.length > 0) {
-        const eliminator = active[Math.floor(Math.random() * active.length)];
-        eliminator.momentum += 0.25;
-      }
-    });
-
-    const totalEliminated = 30 - active.length - entryQueue.length;
-    if (totalEliminated >= 29 && active.length === 1) {
-      return active[0].name;
-    }
-    if (entryQueue.length === 0 && active.length === 1) {
-      return active[0].name;
-    }
-  }
-
-  return active[0]?.name || sorted[sorted.length - 1]?.name;
 }
 
 module.exports = { predictWinners, monteCarloPredict, scoreWrestler };

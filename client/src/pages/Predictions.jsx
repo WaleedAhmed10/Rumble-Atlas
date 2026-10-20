@@ -2,6 +2,28 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSetup, predictWinners, monteCarloPredict } from '../api';
 
+function PredictionList({ predictions, title }) {
+  if (!predictions) return null;
+  return (
+    <div className="card" style={{ marginTop: '20px' }}>
+      <h3>{title}</h3>
+      {predictions.slice(0, 10).map((p, i) => (
+        <div key={p.name} style={{
+          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+          padding: '10px', borderBottom: '1px solid #333',
+          background: i === 0 ? '#1a1a00' : 'transparent'
+        }}>
+          <span>
+            {i === 0 && '🏆 '}{i + 1}. {p.name}
+            <small style={{ color: '#888', marginLeft: '10px' }}>#{p.entryNumber} | {p.brand}</small>
+          </span>
+          <span style={{ color: i === 0 ? 'gold' : '#c00', fontWeight: 'bold' }}>{p.winPercent}%</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 export default function Predictions() {
   const navigate = useNavigate();
   const [wrestlers, setWrestlers] = useState(null);
@@ -29,8 +51,9 @@ export default function Predictions() {
       setQuickResult(result);
     } catch (err) {
       alert(err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   }
 
   async function runMonteCarlo() {
@@ -40,30 +63,9 @@ export default function Predictions() {
       setMcResult(result);
     } catch (err) {
       alert(err.message);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
-  }
-
-  function PredictionList({ predictions, title }) {
-    if (!predictions) return null;
-    return (
-      <div className="card" style={{ marginTop: '20px' }}>
-        <h3>{title}</h3>
-        {predictions.slice(0, 10).map((p, i) => (
-          <div key={p.name} style={{
-            display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-            padding: '10px', borderBottom: '1px solid #333',
-            background: i === 0 ? '#1a1a00' : 'transparent'
-          }}>
-            <span>
-              {i === 0 && '🏆 '}{i + 1}. {p.name}
-              <small style={{ color: '#888', marginLeft: '10px' }}>#{p.entryNumber} | {p.brand}</small>
-            </span>
-            <span style={{ color: i === 0 ? 'gold' : '#c00', fontWeight: 'bold' }}>{p.winPercent}%</span>
-          </div>
-        ))}
-      </div>
-    );
   }
 
   if (error) {

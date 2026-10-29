@@ -141,7 +141,7 @@ export default function Wrestlers() {
 
   return (
     <>
-      <h1 className="page-title">WWE Royal Rumble Wrestler Database</h1>
+      <h1 className="page-title">Rumble Atlas Wrestler Database</h1>
       {error && <div className="error-msg">{error}</div>}
 
       <div className="database-operations">

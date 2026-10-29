@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const rumbleSetupSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
   wrestlers: [{
     wrestlerId: String,
     name: String,

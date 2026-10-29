@@ -1,6 +1,7 @@
 const mongoose = require('mongoose');
 
 const simulationSchema = new mongoose.Schema({
+  userId: { type: String, required: true, index: true },
   winner: String,
   matchDuration: Number,
   mostEliminations: Number,

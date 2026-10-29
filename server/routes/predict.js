@@ -10,7 +10,7 @@ router.post('/', (req, res) => {
     if (error) return res.status(400).json({ error });
     res.json(predictWinners(wrestlers));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err), res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -23,7 +23,7 @@ router.post('/monte-carlo', (req, res) => {
     const runs = Number.isFinite(requested) ? Math.min(Math.max(requested, 1), 2000) : 500;
     res.json(monteCarloPredict(wrestlers, runs));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err), res.status(500).json({ error: 'Something went wrong' });
   }
 });
 

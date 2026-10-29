@@ -64,15 +64,15 @@ router.get('/sample', async (req, res) => {
 
     res.json(sample);
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err), res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
 router.get('/', async (req, res) => {
   try {
-    res.json(await store.setup.get());
+    res.json(await store.setup.get(req.user.id));
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error(err), res.status(500).json({ error: 'Something went wrong' });
   }
 });
 
@@ -80,10 +80,10 @@ router.post('/', async (req, res) => {
   try {
     const { error, wrestlers } = validateRumble(req.body?.wrestlers);
     if (error) return res.status(400).json({ error });
-    const setup = await store.setup.save(wrestlers);
+    const setup = await store.setup.save(req.user.id, wrestlers);
     res.status(201).json(setup);
   } catch (err) {
-    res.status(400).json({ error: err.message });
+    console.error(err), res.status(400).json({ error: 'Invalid request' });
   }
 });
 

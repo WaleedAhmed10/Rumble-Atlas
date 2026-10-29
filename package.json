@@ -1,7 +1,7 @@
 {
-  "name": "wwe-royal-rumble-predictor",
+  "name": "rumble-atlas",
   "version": "1.0.0",
-  "description": "MERN Stack WWE Royal Rumble Predictor with AI/ML",
+  "description": "Rumble Atlas - MERN Stack Royal Rumble Predictor with AI/ML",
   "scripts": {
     "install-all": "npm install",
     "postinstall": "npm install --prefix server && npm install --prefix client",

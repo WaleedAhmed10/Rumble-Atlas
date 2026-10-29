@@ -1,11 +1,27 @@
 const API = (import.meta.env.VITE_API_URL || '/api').replace(/\/+$/, '');
 
+const TOKEN_KEY = 'rr_token';
+
+export function getToken() {
+  try { return localStorage.getItem(TOKEN_KEY); } catch { return null; }
+}
+export function setToken(token) {
+  try {
+    if (token) localStorage.setItem(TOKEN_KEY, token);
+    else localStorage.removeItem(TOKEN_KEY);
+  } catch { /* storage unavailable (private mode) - user will just have to sign in again */ }
+}
+
 async function request(url, options = {}) {
   let res;
+  const token = getToken();
   try {
     res = await fetch(`${API}${url}`, {
-      headers: { 'Content-Type': 'application/json' },
-      ...options
+      ...options,
+      headers: {
+        'Content-Type': 'application/json',
+        ...(token ? { Authorization: `Bearer ${token}` } : {})
+      }
     });
   } catch {
     throw new Error(`Could not connect to the API server at ${API}. Check that the backend is running and the API URL is correct.`);
@@ -22,9 +38,19 @@ async function request(url, options = {}) {
       : ' Check that the backend is running and the API URL is correct.';
     throw new Error(`The server returned a non-JSON response (HTTP ${res.status}).${hint}${excerpt ? ` Response: ${excerpt}` : ''}`);
   }
+  if (res.status === 401 && !url.startsWith('/auth/login') && !url.startsWith('/auth/register')) {
+    // token missing/expired: drop it and tell the app to show the sign-in page
+    setToken(null);
+    window.dispatchEvent(new Event('rr:signed-out'));
+  }
   if (!res.ok) throw new Error(data.error || 'Request failed');
   return data;
 }
+
+// Auth
+export const registerUser = (email, password) => request('/auth/register', { method: 'POST', body: JSON.stringify({ email, password }) });
+export const loginUser = (email, password) => request('/auth/login', { method: 'POST', body: JSON.stringify({ email, password }) });
+export const getMe = () => request('/auth/me');
 
 // Wrestlers
 export const getWrestlers = () => request('/wrestlers');

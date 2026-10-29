@@ -1,26 +1,32 @@
 const fileDb = require('../fileDb');
+const p = (fn) => (...args) => Promise.resolve(fn(...args));
 
 module.exports = {
-  init: () => fileDb.getWrestlers(),
-  seed: () => fileDb.getWrestlers(),
+  init: p(fileDb.init),
+
+  users: {
+    create: p(fileDb.createUser),
+    findByEmail: p(fileDb.findUserByEmail),
+    findById: p(fileDb.findUserById)
+  },
 
   wrestlers: {
-    getAll: () => Promise.resolve(fileDb.getWrestlers()),
-    add: (data) => Promise.resolve(fileDb.addWrestler(data)),
-    update: (id, data) => Promise.resolve(fileDb.updateWrestler(id, data)),
-    remove: (id) => Promise.resolve(fileDb.deleteWrestler(id)),
-    reset: () => Promise.resolve(fileDb.resetWrestlers()),
-    import: (list) => Promise.resolve(fileDb.importWrestlers(list))
+    getAll: p(fileDb.getWrestlers),
+    add: p(fileDb.addWrestler),
+    update: p(fileDb.updateWrestler),
+    remove: p(fileDb.deleteWrestler),
+    reset: p(fileDb.resetWrestlers),
+    import: p(fileDb.importWrestlers)
   },
 
   setup: {
-    get: () => Promise.resolve(fileDb.getSetup()),
-    save: (wrestlers) => Promise.resolve(fileDb.saveSetup(wrestlers))
+    get: p(fileDb.getSetup),
+    save: p(fileDb.saveSetup)
   },
 
   simulations: {
-    getAll: () => Promise.resolve(fileDb.getSimulations()),
-    getLatest: () => Promise.resolve(fileDb.getLatestSimulation()),
-    save: (data) => Promise.resolve(fileDb.saveSimulation(data))
+    getAll: p(fileDb.getSimulations),
+    getLatest: p(fileDb.getLatestSimulation),
+    save: p(fileDb.saveSimulation)
   }
 };

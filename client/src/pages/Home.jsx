@@ -31,7 +31,7 @@ export default function Home() {
   return (
     <>
       <div className="hero">
-        <h1>WWE Royal Rumble Predictor</h1>
+        <h1>Rumble Atlas</h1>
         <p>Who will headline WrestleMania? Make YOUR predictions!</p>
         <div className="cta-buttons">
           <button className="btn btn-primary" onClick={() => navigate('/builder')}>Build Rumble</button>

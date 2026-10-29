@@ -3,39 +3,17 @@ const mongoStore = require('./mongoStore');
 
 let active = fileStore;
 
-function useFile() {
-  active = fileStore;
-  global.dbMode = 'file';
-}
-
-function useMongo() {
-  active = mongoStore;
-  global.dbMode = 'mongo';
-}
+// Forward every call to whichever store (file / mongo) is currently active
+const fwd = (group, fn) => (...args) => active[group][fn](...args);
+const group = (name, fns) => Object.fromEntries(fns.map(fn => [fn, fwd(name, fn)]));
 
 module.exports = {
-  useFile,
-  useMongo,
+  useFile() { active = fileStore; global.dbMode = 'file'; },
+  useMongo() { active = mongoStore; global.dbMode = 'mongo'; },
   init: () => active.init(),
-  seed: () => active.seed(),
 
-  wrestlers: {
-    getAll: () => active.wrestlers.getAll(),
-    add: (data) => active.wrestlers.add(data),
-    update: (id, data) => active.wrestlers.update(id, data),
-    remove: (id) => active.wrestlers.remove(id),
-    reset: () => active.wrestlers.reset(),
-    import: (list) => active.wrestlers.import(list)
-  },
-
-  setup: {
-    get: () => active.setup.get(),
-    save: (wrestlers) => active.setup.save(wrestlers)
-  },
-
-  simulations: {
-    getAll: () => active.simulations.getAll(),
-    getLatest: () => active.simulations.getLatest(),
-    save: (data) => active.simulations.save(data)
-  }
+  users: group('users', ['create', 'findByEmail', 'findById']),
+  wrestlers: group('wrestlers', ['getAll', 'add', 'update', 'remove', 'reset', 'import']),
+  setup: group('setup', ['get', 'save']),
+  simulations: group('simulations', ['getAll', 'getLatest', 'save'])
 };

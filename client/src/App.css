@@ -1,4 +1,4 @@
-/* WWE Royal Rumble Predictor - shared styles (converted from original HTML) */
+/* Rumble Atlas - shared styles (converted from original HTML) */
 * { box-sizing: border-box; }
 
 body {
@@ -534,3 +534,11 @@ input, select {
   .stats { grid-template-columns: 1fr; }
   .wrestler-grid { grid-template-columns: 1fr; }
 }
+
+/* Sign in / account */
+.auth-card { max-width: 420px; margin: 30px auto; }
+.auth-card form { display: flex; flex-direction: column; gap: 8px; }
+.auth-card label { margin-top: 8px; font-weight: bold; }
+.auth-card input { padding: 10px; border-radius: 6px; border: 1px solid #444; background: #111; color: #fff; font-size: 16px; }
+.link-btn { background: none; border: none; color: gold; cursor: pointer; text-decoration: underline; font-size: inherit; padding: 0 4px; }
+.nav-user { color: #fff; font-size: 14px; margin-left: 20px; }
